@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { differenceInSeconds } from "date-fns";
 import { Play } from "phosphor-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as zod from "zod";
 import { CountdownContainer, FormContainer, HomeContainer, MinutesAmountInput, Separator, StartCountdownButoon, TaskInput } from "./styles";
@@ -33,13 +34,15 @@ type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>
 interface Cycle {
   id: string,
   task: string,
-  minutesAmount: number
+  minutesAmount: number,
+  startDate: Date
 }
 
 export function Home() {
 
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
 
   const { register, handleSubmit, watch, /* formState */ reset } = useForm<NewCycleFormData>({
     resolver: zodResolver(newCycleFormValidationSchema),
@@ -48,14 +51,24 @@ export function Home() {
       minutesAmount: 0
     }
   });
+  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
 
-  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
+  useEffect(() => {
+    if (activeCycle) {
+      setInterval(() => {
+        setAmountSecondsPassed(
+          differenceInSeconds(new Date(), activeCycle.startDate))
+      }, 1000)
+    }
+  }, [activeCycle])
+
 
   function handleCreatNewCycle(data: NewCycleFormData) {
     const newCycle: Cycle = {
       id: String(new Date().getTime()),
       task: data.task,
-      minutesAmount: data.minutesAmount
+      minutesAmount: data.minutesAmount,
+      startDate: new Date()
     }
 
     setCycles((state) => [...state, newCycle])
@@ -66,7 +79,6 @@ export function Home() {
 
   // console.log(formState.errors);
 
-  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
 
   const totalSeconds = activeCycle
     ? activeCycle.minutesAmount * 60
